@@ -1,61 +1,36 @@
 
-rm(list=ls())
-set.seed(4108)
+# load packages and clear workspace
 library(survey)
+rm(list=ls())
+set.seed(731)
+n <- 50
 
-# Create a sample dataset
+# create data
 data <- data.frame(
-  id = 1:10,
-  value = rnorm(10)
+  x = rnorm(n),
+  prob_selection = runif(n),
+  freq_weight = rpois(n, 3)
 )
 
-# Probability of selection for each unit
-prob_selection <- runif(10, 0.1, 0.5)
+data$y <- 2 + 3 * data$x + rnorm(n)
+data$samp_weight <- 1 / data$prob_selection
 
-# Sampling weights
-data$samp_weight <- 1 / prob_selection
-
-# Frequency weights (assuming some values appear multiple times)
-data$freq_weight <- sample(1:5, 10, replace = TRUE)
-
-print(data)
-
-################
-################
-################
-
-# CREATE SURVEY DESIGNS
+# declare survey designs
+design_unweight <- svydesign(ids = ~1, data = data, weights = ~1)
 design_samp <- svydesign(ids = ~1, data = data, weights = ~samp_weight)
 design_freq <- svydesign(ids = ~1, data = data, weights = ~freq_weight)
 
-# CALCUALTE WEIGHTED MEANS AND STANDARD ERRORS
-weighted_mean_samp <- svymean(~value, design_samp)
-weighted_mean_freq <- svymean(~value, design_freq)
+# print means and standard errors
+print(design_unweight)
+print(design_samp)
+print(design_freq)
 
-# MANUALLY CALCUALTE WEIGHTED MEANS
-weighted_mean_samp2 <- sum(data$value * data$samp_weight) / sum(data$samp_weight)  
-weighted_mean_freq2 <- sum(data$value * data$freq_weight) / sum(data$freq_weight) 
+# fit linear models
+fit_unweight <- lm(y ~ x, data = data)
+fit_samp <- svyglm(y ~ x, design = design_samp)
+fit_freq <- svyglm(y ~ x, design = design_freq)
 
-# MANUALLY CALCUALTE STANDARD ERRORS
-weighted_var_samp <- sum(data$samp_weight * (data$value - weighted_mean_samp2)^2) / sum(data$samp_weight)
-weighted_var_freq <- sum(data$freq_weight * (data$value - weighted_mean_freq2)^2) / sum(data$freq_weight)
-
-std_error_samp <- sqrt(weighted_var_samp / nrow(data))
-std_error_freq <- sqrt(weighted_var_freq / sum(data$freq_weight))
-
-
-################
-################ PRINT RESULTS
-################
-
-# MEANS AND STANDARD ERRORS
-print(weighted_mean_samp)
-print(weighted_mean_freq)
-
-# MANUAL MEANS
-print(weighted_mean_samp2)
-print(weighted_mean_freq2)
-
-# MANUALS STANDARD ERRORS
-print(std_error_samp)
-print(std_error_freq)
+# print linear models results
+summary(fit_unweight)
+summary(fit_samp)
+summary(fit_freq)
